@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import joblib
 from flask import Flask, request, render_template, jsonify
-from models import load_model, load_preprocessor
+from models import load_model, load_preprocessor, get_class_labels
 from data_preprocessing import ensure_required_columns
 
 app = Flask(__name__)
@@ -30,14 +30,6 @@ leagues = ['E0', 'E1', 'E2', 'E3', 'EC', 'SC0', 'SP1', 'D2']
 def home():
     return render_template('index.html')
 
-@app.route('/')
-def home():
-    return "Hello, Render!"
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
-    
 @app.route('/fixtures')
 def fixtures():
     return render_template('fixtures.html')
@@ -85,14 +77,15 @@ def predict():
         model = load_model(model_choice)
         if model:
             prediction_prob = model.predict_proba(features)[0]
-            prediction = {
-                'home_win': prediction_prob[0],
-                'draw': prediction_prob[1],
-                'away_win': prediction_prob[2]
-            }
-            prediction_text = f"Home Win: {prediction['home_win']*100:.2f}%, Draw: {prediction['draw']*100:.2f}%, Away Win: {prediction['away_win']*100:.2f}%"
+            class_labels = get_class_labels(model)
+
+            # Ensure the correct mapping of prediction probabilities
+            prediction = dict(zip(class_labels, prediction_prob))
+            prediction_text = f"{home_team} Win: {prediction.get(1, 0)*100:.2f}%, Draw: {prediction.get(0, 0)*100:.2f}%, {away_team} Win: {prediction.get(-1, 0)*100:.2f}%"
+            
             return render_template('prediction.html', prediction=prediction, prediction_text=prediction_text,
-                                   historical_matches=historical_matches.to_dict(orient='records'), years=years, leagues=leagues)
+                                   historical_matches=historical_matches.to_dict(orient='records'),
+                                   years=years, leagues=leagues)
         else:
             return render_template('prediction.html', error="Selected model not found.", years=years, leagues=leagues)
 
@@ -111,4 +104,5 @@ def get_teams(league):
     return jsonify({'teams': sorted(teams)})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
