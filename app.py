@@ -30,6 +30,14 @@ leagues = ['E0', 'E1', 'E2', 'E3', 'EC', 'SC0', 'SP1', 'D2']
 def home():
     return render_template('index.html')
 
+@app.route('/')
+def home():
+    return "Hello, Render!"
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
+    
 @app.route('/fixtures')
 def fixtures():
     return render_template('fixtures.html')
